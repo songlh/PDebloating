@@ -1,0 +1,42 @@
+  store i32 0, i32* %638, align 4, !dbg !1970, !bb_id !1966, !ins_id !1971
+//-- 3401 midifile.c: 1149 pMsg->bImpliedMsg = FALSE;
+  store i32 1, i32* %655, align 4, !dbg !2010, !bb_id !2006, !ins_id !2011
+//-- 3419 midifile.c: 1157 pMsg->bImpliedMsg = TRUE;
+  store i32 %658, i32* %660, align 4, !dbg !2021, !bb_id !2006, !ins_id !2022
+//-- 3425 midifile.c: 1158 pMsg->iImpliedMsg = pMsg->iLastMsgType;
+  store i32 %429, i32* %435, align 4, !dbg !1543, !bb_id !1473, !ins_id !1544
+//-- 3176 midifile.c: 1096 pMsg->MsgData.MetaEvent.Data.SMPTE.iSecs = *(pTrack->ptr+2);
+  store i32 %441, i32* %447, align 4, !dbg !1567, !bb_id !1473, !ins_id !1568
+//-- 3189 midifile.c: 1097 pMsg->MsgData.MetaEvent.Data.SMPTE.iFrames = *(pTrack->ptr+3);
+  store i32 %453, i32* %459, align 4, !dbg !1591, !bb_id !1473, !ins_id !1592
+//-- 3202 midifile.c: 1098 pMsg->MsgData.MetaEvent.Data.SMPTE.iFF = *(pTrack->ptr+4);
+
+
+
+
+
+
+2815 80 midiReadGetNextMessage 1001
+3276 10 midiReadGetNextMessage 1114
+3216 10 midiReadGetNextMessage 1101
+3202 10 midiReadGetNextMessage 1098 <=
+2866 46 midiReadGetNextMessage 1014
+2939 20 midiReadGetNextMessage 1033
+2845 46 midiReadGetNextMessage 1008
+3101 30 midiReadGetNextMessage 1082
+3189 10 midiReadGetNextMessage 1097  <=
+3401 318 midiReadGetNextMessage 1149 <==
+3328 11 midiReadGetNextMessage 1126
+3150 10 midiReadGetNextMessage 1094
+3230 10 midiReadGetNextMessage 1102
+2947 20 midiReadGetNextMessage 1034
+2802 318 midiReadGetNextMessage 1000
+2836 46 midiReadGetNextMessage 1007
+3163 10 midiReadGetNextMessage 1095
+3176 10 midiReadGetNextMessage 1096 <=
+
+
+10 + 10 + 318 + 10 
+
+
+cut two:
