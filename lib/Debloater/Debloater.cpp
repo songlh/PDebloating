@@ -14,6 +14,7 @@
 #include "llvm/IR/Operator.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/SimplifyInstructions.h"
+#include "llvm/IR/GetElementPtrTypeIterator.h"
 
 #include "Commons/Search/Search.h"
 #include "Debloater/Debloater.h"
@@ -28,12 +29,12 @@ static RegisterPass<Debloater> X(
         false, false);
 
 
-static cl::opt<unsigned> uLoopSrcLine("noLoopLine", 
-					cl::desc("Source Code Line Number for the Loop"), cl::Optional, 
+static cl::opt<unsigned> uLoopSrcLine("noLoopLine",
+					cl::desc("Source Code Line Number for the Loop"), cl::Optional,
 					cl::value_desc("uLoopCodeLine"));
 
-static cl::opt<std::string> strFuncName("strFunc", 
-					cl::desc("Function Name"), cl::Optional, 
+static cl::opt<std::string> strFuncName("strFunc",
+					cl::desc("Function Name"), cl::Optional,
 					cl::value_desc("strFuncName"));
 
 /*
@@ -49,7 +50,7 @@ Value * DecomposeGEPExpression(const Value *V, uint64_t &BaseOffs, DataLayout * 
 		if(!Op)
 		{
 			if(const GlobalAlias *GA = dyn_cast<GlobalAlias>(V))
-			{	
+			{
 				if(!GA->isInterposable())
 				{
 					V = GA->getAliasee();
@@ -428,18 +429,18 @@ bool DecomposeGEPExpression(const Value *V,
   return true;
 }
 
-int getInstructionID(Instruction *II) 
+int getInstructionID(Instruction *II)
 {
 	MDNode * Node = II->getMetadata("ins_id");
 
-	if (!Node) 
+	if (!Node)
 	{
 		return -1;
     }
 
 	assert(Node->getNumOperands() == 1);
 	const Metadata *MD = Node->getOperand(0);
-	if (auto *MDV = dyn_cast<ValueAsMetadata>(MD)) 
+	if (auto *MDV = dyn_cast<ValueAsMetadata>(MD))
 	{
 		Value *V = MDV->getValue();
 		ConstantInt *CI = dyn_cast<ConstantInt>(V);
@@ -447,7 +448,7 @@ int getInstructionID(Instruction *II)
 		return CI->getZExtValue();
 	}
 
-	return -1; 
+	return -1;
 }
 
 char Debloater::ID = 0;
@@ -460,13 +461,13 @@ void Debloater::getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequired<LoopInfoWrapperPass>();
 }
 
-Debloater::Debloater() : ModulePass(ID) 
+Debloater::Debloater() : ModulePass(ID)
 {
 	PassRegistry &Registry = *PassRegistry::getPassRegistry();
 	initializePostDominatorTreeWrapperPassPass(Registry);
 	initializeDominatorTreeWrapperPassPass(Registry);
     initializeLoopInfoWrapperPassPass(Registry);
-   
+
 }
 
 bool Debloater::isTargetInstruction(Instruction * pInst)
@@ -537,7 +538,7 @@ void Debloater::removeInstruction(Instruction * pInst)
 
 void Debloater::removeUnnecessaryWrite(map<int64_t, vector<LoadInst *> > & mapOffsetRead, map<int64_t, vector<StoreInst *> > mapOffsetWrite)
 {
-	map<int64_t, vector<StoreInst *> >::iterator itMapBegin; 
+	map<int64_t, vector<StoreInst *> >::iterator itMapBegin;
 	//map<int64_t, vector<StoreInst *> >::iterator itMapEnd   = mapOffsetWrite.end();
 
 	for(itMapBegin = mapOffsetWrite.begin(); itMapBegin != mapOffsetWrite.end(); itMapBegin ++ )
@@ -556,7 +557,7 @@ void Debloater::removeUnnecessaryWrite(map<int64_t, vector<LoadInst *> > & mapOf
 					if(MDNode * N = mapOffsetRead[itMapBegin->first][j]->getMetadata("dbg"))
 					{
 						const DILocation *Loc = mapOffsetRead[itMapBegin->first][j]->getDebugLoc();
-					
+
 						errs() << "//-- " << getInstructionID(mapOffsetRead[itMapBegin->first][j]) << " "  << Loc->getFilename() << ": " << Loc->getLine() << "\n";
 					}
 					//unsigned int uLineNoForInst = Loc->getLine();
@@ -564,7 +565,7 @@ void Debloater::removeUnnecessaryWrite(map<int64_t, vector<LoadInst *> > & mapOf
 			}
 		}
     */
-		
+
 		if(mapOffsetRead.find(itMapBegin->first) == mapOffsetRead.end())
 		{
 			for(unsigned i = 0; i < itMapBegin->second.size(); i ++)
@@ -626,7 +627,7 @@ void Debloater::collectLoopDependence(Function * pFunction, map<LoadInst *, int6
 						if(CDG.influences(vecLoopBBs[i], pBB))
 						{
 							if(SwitchInst * pSwitch = dyn_cast<SwitchInst>(vecLoopBBs[i]->getTerminator()))
-							{	
+							{
 								if(LoadInst * pConLoad = dyn_cast<LoadInst>(pSwitch->getCondition()))
 								{
 									if(isTargetInstruction(pConLoad))
@@ -640,7 +641,7 @@ void Debloater::collectLoopDependence(Function * pFunction, map<LoadInst *, int6
 											if(ConstantInt * pConst = dyn_cast<ConstantInt>(it->getCaseValue()))
 											{
 												mapUseDependence[pLoad][mapReadOffset[pConLoad]].push_back(pConst->getSExtValue());
-											}	
+											}
 										}
 									}
 								}
@@ -687,7 +688,7 @@ void Debloater::collectLoopDependence(Function * pFunction, map<LoadInst *, int6
 /*
 void Debloater::removeConditionalDef(Function * pFunction, map<LoadInst *, int64_t> & mapReadOffset)
 {
-	
+
 }
 
 
@@ -772,8 +773,8 @@ bool Debloater::runOnModule(Module & M)
 
 	Loop * pLoop = searchLoopByLineNo(pFunction, pLI, uLoopSrcLine);
 
-	
-	
+
+
 	this->dl = new DataLayout(&M);
 
 	map<LoadInst *, int64_t> mapReadOffset;

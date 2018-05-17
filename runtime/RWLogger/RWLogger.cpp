@@ -1,5 +1,6 @@
-#include <errno.h>
-#include <fcntl.h>
+/*
+//#include <errno.h>
+//#include <fcntl.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,13 +17,13 @@ extern "C" void initHooks()
 	char LogFileNameCStr[1024];
 
 	sprintf(LogFileNameCStr, "/home/songlh/workspace/github/PDebloating/tmp/CPI-%04d%02d%02d-%02d%02d%02d", LT->tm_year + 1900, LT->tm_mon + 1, LT->tm_mday, LT->tm_hour, LT->tm_min, LT->tm_sec);
-	
+
 	printf("%s\n", LogFileNameCStr);
 
 	fp = fopen(LogFileNameCStr, "w+");
 
 	if(fp == NULL)
-	{	
+	{
 		fprintf(stderr, "Open failed: %s\n", strerror(errno));
 		exit(-1);
 	}
@@ -43,3 +44,4 @@ extern "C" void finalizeHooks()
 {
 	fclose(fp);
 }
+*/
