@@ -1,1 +1,5 @@
 /build
+*.bc
+*.ll
+*.o
+*.id

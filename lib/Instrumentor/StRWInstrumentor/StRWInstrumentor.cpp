@@ -17,12 +17,12 @@ static RegisterPass<StRWInstrumentor> X(
         false, false);
 
 
-static cl::opt<unsigned> uLoopSrcLine("noLoopLine", 
-					cl::desc("Source Code Line Number for the Loop"), cl::Optional, 
+static cl::opt<unsigned> uLoopSrcLine("noLoopLine",
+					cl::desc("Source Code Line Number for the Loop"), cl::Optional,
 					cl::value_desc("uLoopCodeLine"));
 
-static cl::opt<std::string> strFuncName("strFunc", 
-					cl::desc("Function Name"), cl::Optional, 
+static cl::opt<std::string> strFuncName("strFunc",
+					cl::desc("Function Name"), cl::Optional,
 					cl::value_desc("strFuncName"));
 
 
@@ -79,21 +79,21 @@ Value * getBaseAddress(Instruction * pInst)
 		return NULL;
 	}
 
-	
+
 }
 
-int getInstructionID(Instruction *II) 
+int getInstructionID(Instruction *II)
 {
 	MDNode * Node = II->getMetadata("ins_id");
 
-	if (!Node) 
+	if (!Node)
 	{
 		return -1;
     }
 
 	assert(Node->getNumOperands() == 1);
 	const Metadata *MD = Node->getOperand(0);
-	if (auto *MDV = dyn_cast<ValueAsMetadata>(MD)) 
+	if (auto *MDV = dyn_cast<ValueAsMetadata>(MD))
 	{
 		Value *V = MDV->getValue();
 		ConstantInt *CI = dyn_cast<ConstantInt>(V);
@@ -101,7 +101,7 @@ int getInstructionID(Instruction *II)
 		return CI->getZExtValue();
 	}
 
-	return -1; 
+	return -1;
 }
 
 
@@ -114,7 +114,7 @@ void StRWInstrumentor::getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequired<LoopInfoWrapperPass>();
 }
 
-StRWInstrumentor::StRWInstrumentor() : ModulePass(ID) 
+StRWInstrumentor::StRWInstrumentor() : ModulePass(ID)
 {
 	PassRegistry &Registry = *PassRegistry::getPassRegistry();
     initializeLoopInfoWrapperPassPass(Registry);
@@ -136,7 +136,7 @@ void StRWInstrumentor::SetupHooks()
 	this->initHooks = this->pModule->getFunction("initHooks");
 
 	if(!this->initHooks)
-	{	
+	{
 		ArgTypes.clear();
 		FunctionType * pFType = FunctionType::get(this->VoidType, ArgTypes, false);
 		this->initHooks = Function::Create(pFType, GlobalValue::ExternalLinkage, "initHooks", this->pModule);
@@ -177,13 +177,14 @@ void StRWInstrumentor::instrumentStLoad(LoadInst * pLoad)
 {
 	Value * pValue = getBaseAddress(pLoad);
 	DataLayout * dl = new DataLayout(this->pModule);
-	Instruction * pInstEnd = pLoad->getParent()->getTerminator();			
+	Instruction * pInstEnd = pLoad->getParent()->getTerminator();
 
+    //errs() << "in load\n" ;
 	if(PointerType * pPType = dyn_cast<PointerType>(pValue->getType()))
 	{
-		if(StructType * pStType = dyn_cast<StructType>(pPType->getElementType()))
+		//if(StructType * pStType = dyn_cast<StructType>(pPType->getElementType()))
 		{
-			if(pStType->getName() == "struct.MIDI_MSG")
+			//if(pStType->getName() == "struct.MIDI_MSG")
 			{
 				//pLoad->getParent()->dump();
 				//pLoad->dump();
@@ -197,6 +198,7 @@ void StRWInstrumentor::instrumentStLoad(LoadInst * pLoad)
 					CastInst * pCast = new BitCastInst(pValue, this->VoidPointerType, "", pInstEnd);
 
 					int instID = getInstructionID(pLoad);
+                    //errs() << "insID" << instID << "\n";
 					ConstantInt * pConstantID = ConstantInt::get(this->pModule->getContext(), APInt(32, StringRef(to_string(instID)), 10));
 
 					vector<Value *> vecParams;
@@ -229,13 +231,13 @@ void StRWInstrumentor::instrumentStStore(StoreInst * pStore)
 {
 	Value * pValue = getBaseAddress(pStore);
 	DataLayout * dl = new DataLayout(this->pModule);
-	Instruction * pInstEnd = pStore->getParent()->getTerminator();			
+	Instruction * pInstEnd = pStore->getParent()->getTerminator();
 
 	if(PointerType * pPType = dyn_cast<PointerType>(pValue->getType()))
 	{
-		if(StructType * pStType = dyn_cast<StructType>(pPType->getElementType()))
+		//if(StructType * pStType = dyn_cast<StructType>(pPType->getElementType()))
 		{
-			if(pStType->getName() == "struct.MIDI_MSG")
+			//if(pStType->getName() == "struct.MIDI_MSG")
 			{
 				Value * pValue = pStore->getPointerOperand();
 				Type * pType = pValue->getType()->getContainedType(0);
@@ -277,14 +279,54 @@ void StRWInstrumentor::instrumentStRW()
 {
 	vector<Function *> vecWorkList;
 
-	for(Loop::block_iterator BB = pLoop->block_begin(); BB != pLoop->block_end(); BB ++ )
+
+	//errs() << "begin instrumentStRW!\n" ;
+    //log all
+	Function * pMain = pModule->getFunction("main_real");
+    for(Function::iterator BB = pMain->begin(); BB != pMain->end(); BB ++ )
+    {
+        //errs() << "find BB!\n" ;
+		for(BasicBlock::iterator II = BB->begin(); II != BB->end(); II ++)
+		{
+            //errs() << "find II!\n" ;
+			if(LoadInst * pLoad = dyn_cast<LoadInst>(II))
+			{
+                //errs() << "find LOAD!\n" ;
+				instrumentStLoad(pLoad);
+
+			}
+			else if(StoreInst * pStore = dyn_cast<StoreInst>(II))
+			{
+				instrumentStStore(pStore);
+			}
+			else if(CallInst * pCall = dyn_cast<CallInst>(II))
+			{
+				if(pCall->getCalledFunction() != NULL)
+				{
+					vecWorkList.push_back(pCall->getCalledFunction());
+				}
+
+			}
+			else if(isa<IntrinsicInst>(II))
+			{
+				II->dump();
+				assert(0);
+			}
+		}
+
+    }
+
+
+    //log loop
+    /*
+	for(Loop::block_iterator BB = pLoop->block_begin(); BB != pLoop->block_end(); BB ++ ) //log LOOP
 	{
 		for(BasicBlock::iterator II = (*BB)->begin(); II != (*BB)->end(); II ++)
 		{
 			if(LoadInst * pLoad = dyn_cast<LoadInst>(II))
 			{
 				instrumentStLoad(pLoad);
-				
+
 			}
 			else if(StoreInst * pStore = dyn_cast<StoreInst>(II))
 			{
@@ -305,6 +347,7 @@ void StRWInstrumentor::instrumentStRW()
 			}
 		}
 	}
+    */
 
 
 	//return;
@@ -321,6 +364,12 @@ void StRWInstrumentor::instrumentStRW()
 			continue;
 		}
 
+        //avoid infinit loop
+        if(pF->getName() == "DbgConsole_Printf" || pF->getName() == "DbgConsole_Putchar" || pF->getName() == "DbgConsole_Getchar")
+        {
+            continue;
+        }
+
 		setProcessedFunc.insert(pF);
 
 		for(Function::iterator BB = pF->begin(); BB != pF->end(); BB ++ )
@@ -330,7 +379,7 @@ void StRWInstrumentor::instrumentStRW()
 				if(LoadInst * pLoad = dyn_cast<LoadInst>(II))
 				{
 					instrumentStLoad(pLoad);
-				
+
 				}
 				else if(StoreInst * pStore = dyn_cast<StoreInst>(II))
 				{
@@ -354,12 +403,12 @@ void StRWInstrumentor::instrumentStRW()
 
 	}
 
-	
+
 }
 
 void StRWInstrumentor::instrumentMain()
 {
-	Function * pMain = pModule->getFunction("main");
+	Function * pMain = pModule->getFunction("main_real");
 	BasicBlock * pEntry = &pMain->getEntryBlock();
 
 	CallInst * pCallInit = CallInst::Create(this->initHooks, "", pEntry->getTerminator());
@@ -402,8 +451,8 @@ bool StRWInstrumentor::runOnModule(Module & M)
 	SetupTypes();
 	SetupHooks();
 
-	Function * pMain = M.getFunction("main");
-
+	Function * pMain = M.getFunction("main_real");
+/*
 	//Function * pFunction = searchFunctionByName(M, strFuncName);
 	Function * pFunction = M.getFunction(strFuncName);
 
@@ -425,7 +474,7 @@ bool StRWInstrumentor::runOnModule(Module & M)
 	}
 
 	this->pLoop = pLoop;
-
+*/
 	instrumentMain();
 
 	instrumentStRW();
