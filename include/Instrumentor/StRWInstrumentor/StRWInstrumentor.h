@@ -30,6 +30,8 @@ struct StRWInstrumentor: public ModulePass {
 
 	void instrumentStStore(StoreInst * pStore);
 
+	void instrumentMemcpy(CallInst * pCall);
+
 	void SetupTypes();
 
 	void SetupConstants();
@@ -49,7 +51,7 @@ public:
 	Function * initHooks;
 	Function * finalizeHooks;
 
-	 
+
 	Module * pModule;
 	Loop * pLoop;
 

@@ -227,6 +227,55 @@ void StRWInstrumentor::instrumentStLoad(LoadInst * pLoad)
 	}
 }
 
+void StRWInstrumentor::instrumentMemcpy(CallInst *pCall)
+{
+    /*
+	Value * pValue = getBaseAddress(pCall);
+	DataLayout * dl = new DataLayout(this->pModule);
+	Instruction * pInstEnd = pStore->getParent()->getTerminator();
+
+	if(PointerType * pPType = dyn_cast<PointerType>(pValue->getType()))
+	{
+		//if(StructType * pStType = dyn_cast<StructType>(pPType->getElementType()))
+		{
+			//if(pStType->getName() == "struct.MIDI_MSG")
+			{
+				Value * pValue = pStore->getPointerOperand();
+				Type * pType = pValue->getType()->getContainedType(0);
+
+				if(pType->isSized())
+				{
+					ConstantInt * pConstantSize = ConstantInt::get(this->pModule->getContext(), APInt(32, StringRef(std::to_string(dl->getTypeAllocSize(pType))), 10));
+					CastInst * pCast = new BitCastInst(pValue, this->VoidPointerType, "", pInstEnd);
+
+					int instID = getInstructionID(pStore);
+					ConstantInt * pConstantID = ConstantInt::get(this->pModule->getContext(), APInt(32, StringRef(to_string(instID)), 10));
+
+					vector<Value *> vecParams;
+
+					vecParams.push_back(pCast);
+					vecParams.push_back(pConstantSize);
+					vecParams.push_back(pConstantID);
+
+					CallInst * pCall = CallInst::Create(this->hookWrite, vecParams, "", pInstEnd);
+					pCall->setCallingConv(CallingConv::C);
+					pCall->setTailCall(false);
+					AttributeList arrList;
+					pCall->setAttributes(arrList);
+
+				}
+				else
+				{
+					pStore->dump();
+					assert(0);
+				}
+			}
+		}
+	}
+    */
+}
+
+
 void StRWInstrumentor::instrumentStStore(StoreInst * pStore)
 {
 	Value * pValue = getBaseAddress(pStore);
@@ -303,7 +352,11 @@ void StRWInstrumentor::instrumentStRW()
 			{
 				if(pCall->getCalledFunction() != NULL)
 				{
-					vecWorkList.push_back(pCall->getCalledFunction());
+                        if(pCall->getCalledFunction()->getName() == "memcpy")
+                        {
+                            instrumentMemcpy(pCall);
+                        }else
+						    vecWorkList.push_back(pCall->getCalledFunction());
 				}
 
 			}
@@ -365,10 +418,13 @@ void StRWInstrumentor::instrumentStRW()
 		}
 
         //avoid infinit loop
-        if(pF->getName() == "DbgConsole_Printf" || pF->getName() == "DbgConsole_Putchar" || pF->getName() == "DbgConsole_Getchar")
+        if(!memcmp(pF->getName().str().c_str(), "DbgConsole", 10))
+        //if(pF->getName() == "DbgConsole_Printf" || pF->getName() == "DbgConsole_Putchar" || pF->getName() == "DbgConsole_Getchar")
         {
+		    setProcessedFunc.insert(pF);
             continue;
         }
+
 
 		setProcessedFunc.insert(pF);
 
@@ -389,7 +445,11 @@ void StRWInstrumentor::instrumentStRW()
 				{
 					if(pCall->getCalledFunction() != NULL)
 					{
-						vecWorkList.push_back(pCall->getCalledFunction());
+                        if(pCall->getCalledFunction()->getName() == "memcpy")
+                        {
+                            instrumentMemcpy(pCall);
+                        }else
+						    vecWorkList.push_back(pCall->getCalledFunction());
 					}
 				}
 				else if(isa<IntrinsicInst>(II))
@@ -475,7 +535,7 @@ bool StRWInstrumentor::runOnModule(Module & M)
 
 	this->pLoop = pLoop;
 */
-	instrumentMain();
+	//instrumentMain();
 
 	instrumentStRW();
 
